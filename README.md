@@ -1,8 +1,12 @@
 # Introduzione alle Generics in Go
 
+&nbsp;
+
 <p align="center">
 <a href="./NOTES.md">./NOTES.md</a>
 </p>
+
+&nbsp;
 
 Materiale per il talk sulle generics del Go:
 
