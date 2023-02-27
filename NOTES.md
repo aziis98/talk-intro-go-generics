@@ -554,3 +554,13 @@ func (v Right[A, B]) Match(
 	caseRight(v.Value)
 }
 ```
+
+## Bibliografia
+
+Materiale per il talk sulle generics del Go:
+
+- <https://go.dev/blog/intro-generics> &mdash; Basi sulle generics
+
+- <https://go.dev/blog/when-generics> &mdash; Quanto usarle e quando no
+
+- <https://go.googlesource.com/proposal/+/HEAD/design/43651-type-parameters.md> &mdash; Questa è proprio la proposal ufficiale in teoria
