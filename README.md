@@ -1,0 +1,20 @@
+# Introduzione alle Generics in Go
+
+<p align="center">
+<a href="./NOTES.md">./NOTES.md</a>
+</p>
+
+Materiale per il talk sulle generics del Go:
+
+- <https://go.dev/blog/intro-generics>
+
+    Basi sulle generics
+
+- <https://go.dev/blog/when-generics>
+
+    Quanto usarle e quando no
+
+- <https://go.googlesource.com/proposal/+/HEAD/design/43651-type-parameters.md>
+
+    Questa è proprio la proposal ufficiale in teoria
+
