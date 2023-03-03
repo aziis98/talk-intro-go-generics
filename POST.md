@@ -285,7 +285,7 @@ o4 := o3.Map(double) // Option[int]{ present: false }
 
 Questo sembrerebbe un buon utilizzo delle generics per introdurre il tipo `Option[T]` già molto usato in molti linguaggi funzionali e non. Ad esempio Rust che ha deciso di integrarli direttamente nel linguaggio prima con la macro `try!` e poi con l'operatore `?`.
 
-Al momento però non è possibile introdurre generics nelle funzioni quindi la seguente funzione sarebbe illegale
+Vorremmo poter anche scrivere una funzione come la seguente in cui definiamo un metodo su un tipo generico a sua volta con un tipo parametrico
 
 ```go
 func (Option[T]) MapToOther[S any](f func(T) S) Option[s] {
@@ -296,6 +296,8 @@ func (Option[T]) MapToOther[S any](f func(T) S) Option[s] {
     return Some(f(o.value))
 }
 ```
+
+Al momento però non è possibile introdurre generics nelle funzioni quindi la seguente funzione sarebbe illegale
 
 <!-- questo già richiede creare specializzazioni per `Option[T]` per ogni utilizzo di `T`, e se aggiungiamo `S` e ciò complicherebbe abbastanza il compilatore de Go che è noto per essere molto veloce rispetto ad altri per numero di righe di codice al secondo (in particolare il Go ha un compilatore single-pass che inizia a sputare codice macchina quando già sta leggendo i file di codice in input) [FACT CHECK]. -->
 
@@ -396,6 +398,8 @@ Se vogliamo scrive del codice generico per più tipo chi possiamo chiedere se l'
 Ci sono alcuni casi in cui vorremmo implementare una qualche operazione per tipi che non possono avere metodi (ad esempio per dei tipi primitivi) e tale operazione è diversa per ogni tipo. In questo caso conviene usare la _reflection_ invece di interfacce o generics. Ad esempio `encoding/json` funziona in questo modo.
 
 ## Utilizzi interessanti delle generics
+
+### Accesso type-safe ad un database
 
 Le generics possono essere utilizzate anche solo per rendere il codice più sicuro dal punto di vista dai tipi (e per fare meno conversioni a _runtime_), ad esempio quando definiamo una struct generica nessuno ci obbliga ad utilizzare effettivamente il _type parameter_ che introduciamo.
 
