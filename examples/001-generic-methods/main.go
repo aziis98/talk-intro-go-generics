@@ -1,32 +1,55 @@
 package main
 
-// import (
-// 	"fmt"
+import (
+	"log"
 
-// 	"golang.org/x/exp/constraints"
-// )
+	"golang.org/x/exp/constraints"
+)
 
-// // Scale returns a copy of s with each element multiplied by c.
-// func Scale[S []E | [][]E, E constraints.Integer](s S, c E) S {
-// 	r := make(S, len(s))
-// 	for i, v := range s {
-// 		r[i] = v * c
-// 	}
-// 	return r
-// }
+//
+// The old way
+//
 
-// type Point []int32
+func MinInt(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
 
-// func (p Point) String() string {
-// 	return fmt.Sprintf("(%v, %v)", p[0], p[1])
-// }
+func MinInt32(x, y int32) int32 {
+	if x < y {
+		return x
+	}
+	return y
+}
 
-// // ScaleAndPrint doubles a Point and prints it.
-// // func ScaleAndPrint(p Point) {
-// // 	r := Scale(p, 2)
-// // 	fmt.Println(r.String()) // DOES NOT COMPILE
-// // }
+func MinInt64(x, y int64) int64 {
+	if x < y {
+		return x
+	}
+	return y
+}
 
-// func main() {
+func MinFloat32(x, y float32) float32 {
+	if x < y {
+		return x
+	}
+	return y
+}
 
-// }
+//
+// Generics
+//
+
+func Min[T constraints.Ordered](x, y T) T {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func main() {
+	shortMin := Min[int16] // func(int16, int16) int16
+	log.Printf(`min(2, 3) = %v`, shortMin(2, 3))
+}

@@ -1,20 +1,18 @@
 # Introduzione alle Generics in Go
 
-Dalla versione 1.18 del Go sono state aggiunte le generics.
+Dalla versione 1.18 del Go è stata aggiunta la possibilità di definire funzioni e strutture parametrizzate da tipi con i cosiddetti _type parameters_ o anche dette semplicemente _generics_. Lo scopo principale è che ci permettono di scrivere codice indipendente dai tipi specifici che utilizzano.
 
-Le generics ci permettono di scrivere codice indipendente dai tipi specifici che utilizza.
+Più precisamente le tre novità relative alle _generics_ sono
 
-In particolare le tre novità sono
+- Sia funzioni che tipi possono essere parametrizzati rispetto a dei tipi (_type parameters_)
 
-- Ora sia funzioni che tipi possono prendere dei tipi come parametri (_type parameters_)
-
-- In un modo ristretto le interfacce ora possono essere utilizzare per definire "insiemi di tipi"
+- In un modo ristretto le interfacce possono essere utilizzare per definire "insiemi di tipi" (_type sets_)
 
 - Un minimo di _type inference_ che ci permette di omettere i _type parameters_ quando si riescono a dedurre dal contesto.
 
 ## Il problema
 
-Uno degli esempi più lampanti della necessità di aggiungere le _generics_ al Go è che bisogna scrivere ogni volta implementazioni di `Min(x, y)` per ogni tipo numerico che vogliamo utilizzare
+Uno degli esempi più lampanti della necessità di aggiungere le _generics_ al Go è che ad esempio manca la funzione `Min` per interi nella libreria standard del linguaggio e bisogna scriversi ogni volta un'implementazione speciale di `Min(x, y)` per il tipo numerico che vogliamo utilizzare (al momento c'è solo `math.Min(float64, float64) float64` che però necessita di conversioni se la vogliamo usare per interi o anche solo `float32`)
 
 ```go
 func MinInt(x, y int) int {
@@ -44,13 +42,6 @@ func MinFloat32(x, y float32) float32 {
     }
     return y
 }
-
-func MinFloat64(x, y float64) float64 {
-    if x < y {
-        return x
-    }
-    return y
-}
 ```
 
 Notiamo che l'implementazione è sempre la stessa ma cambia solo la segnatura della funzione. Dal Go 1.18 però possiamo scrivere
@@ -66,7 +57,9 @@ func Min[T constraints.Ordered](x, y T) T {
 }
 ```
 
-che possiamo usare ad esempio con `Min[int64](2, 5)` oppure `Min[float32](2.71, 3.14)`. In particolare dopo aver passato i _type parameters_ possiamo usarla come una qualunque altra funzione, ovvero quanto segue è codice legale
+Qui la parte nuova da notare è la stringa `[T constraints.Ordered]` che indica che stiamo introducendo un parametro `T` vincolato ad essere ordinabile. 
+
+Questa funzione può essere usata ad esempio con `Min[int64](2, 5)` oppure `Min[float32](2.71, 3.14)`. In particolare dopo aver passato i _type parameters_ possiamo usarla come una qualunque altra funzione, ovvero quanto segue è codice legale
 
 ```go
 shortMin := Min[int16] // func(int16, int16) int16
@@ -83,9 +76,16 @@ type Tree[T interface{}] struct {
 }
 ```
 
-In realtà invece di dover scrivere ogni volta `interface{}` è stato aggiunto l'alias `any`.
+In realtà invece di dover scrivere ogni volta `interface{}` è stato aggiunto l'alias `any` quindi possiamo scrivere direttamente
 
-O anche con valori solo sulle foglie, in particolare vediamo ora come possiamo anche definire dei metodi su tipi con _type parameters_.
+```go
+type Tree[T any] struct {
+    Left, Right *BinaryTree[T]
+    Value       T
+}
+```
+
+Vediamo qualche altro esempio, possiamo anche avere un albero con valori solo sulle foglie, in particolare vediamo ora come possiamo anche definire dei metodi su tipi con _type parameters_.
 
 ```go
 type BinaryTree[T any] interface{
@@ -217,7 +217,7 @@ Prima delle generics c'è sempre stato il problema che non era possibile definir
 
     - ...
 
-- Il modulo `golang.org/x/exp/maps` già offre
+- Invece il modulo `golang.org/x/exp/maps` ad esempio ha
 
     - `func Keys[M ~map[K]V, K comparable, V any](m M) []K`
 
@@ -283,9 +283,9 @@ o3 := option.None[int]()
 o4 := o3.Map(double) // Option[int]{ present: false }
 ```
 
-Questo sembrerebbe un buon utilizzo delle generics per introdurre il tipo `Option[T]` già molto usato in molti linguaggi funzionali e non come Rust che ha deciso di integrarli proprio a livello del linguaggio stesso.
+Questo sembrerebbe un buon utilizzo delle generics per introdurre il tipo `Option[T]` già molto usato in molti linguaggi funzionali e non. Ad esempio Rust che ha deciso di integrarli direttamente nel linguaggio prima con la macro `try!` e poi con l'operatore `?`.
 
-Solo che al momento non è possibile introdurre generics nelle funzioni quindi la seguente funzione sarebbe illegale
+Al momento però non è possibile introdurre generics nelle funzioni quindi la seguente funzione sarebbe illegale
 
 ```go
 func (Option[T]) MapToOther[S any](f func(T) S) Option[s] {
@@ -306,40 +306,40 @@ Nel caso di strutture dati ad esempio
 ```go
 package option
 
-// se da qualche parte utilizziamo "Option[int]" allora vengono generate queste strutture
-type Option__int struct{
+// se da qualche parte utilizziamo "Option[int]" allora viene generata questa struttura e queste funzioni.
+type Option_int struct{
     present bool
     value   int
 }
 
-func Some__int(value int) Option__int {
+func Some_int(value int) Option_int {
     return Option{ true, value }
 }
 
-func None__int() Option__int {
+func None_int() Option_int {
     return Option{ present: false }
 }
 
-// se da qualche parte utilizziamo "Option[int]" allora vengono generate queste strutture
-type Option__string struct{
+// se da qualche parte utilizziamo "Option[string]" allora viene generata questa struttura e queste funzioni.
+type Option_string struct{
     present bool
     value   string
 }
 
-func Some__string(value string) Option__string {
+func Some_string(value string) Option_string {
     return Option{ true, value }
 }
 
-func None__string() Option__string {
+func None_string() Option_string {
     return Option{ present: false }
 }
 ```
 
-questo ha il vantaggio di creare specializzazioni per ogni caso specifico senza fare uso di puntatori  (quindi il codice rimane abbastanza performante) però al prezzo di grandezza del binario generato.
+questo ha il vantaggio di creare specializzazioni per ogni caso specifico senza fare uso di puntatori (quindi il codice rimane abbastanza performante) però al prezzo di grandezza del binario generato.
 
 (<https://go.googlesource.com/proposal/+/master/design/43651-type-parameters.md#no-parameterized-methods>)
 
-In go i metodi su tipi hanno l'obbiettivo di poter verificare una qualche interfaccia e quindi nascondere le implementazioni specifiche dei singoli tipi, con questo principio in mente dovrebbe poter essere possibile definire
+In Go i metodi sui tipi sono stati introdotti come modo di astrazione via le interfacce. Detto in altri termini dato un tipo ed un'interfaccia possiamo facilmente vedere se questo verifica l'interfaccia e se abbiamo un valore di tipo quell'interfaccia dovremmo poter passare il tipo a quell'interfaccia anche da un altro modulo. Con questo principio in mente dovrebbe poter essere possibile definire la seguente interfaccia
 
 ```go
 type Processor interface {
@@ -357,7 +357,7 @@ func Example(v Processor) {
 }
 ```
 
-e se ad esempio abbiamo un tipo
+ad esempio su un tipo come
 
 ```go
 type Foo struct{}
@@ -367,7 +367,9 @@ func (Foo) Process[T any](value T) T {
 }
 ```
 
-che porterebbe a vari problemi sul come generare il codice per questo tipo in quanto fino a runtime non sarebbero note quali chiamate generiche vengono instanziate a meno di non fare dell'analisi statica molto elaborata.
+questo porterebbe a vari problemi sul come generare il codice per questo tipo in quanto fino a _runtime_ non sarebbero note quali chiamate generiche vengono instanziate a meno di non fare dell'analisi statica molto elaborata.
+
+Un modo potrebbe essere fare come Rust e non permettere definire interfacce/trait con metodi/funzioni che introducono nuovi tipi parametrici, vedremo in Go 2...
 
 ## Quando non usare le generics?
 
@@ -398,6 +400,8 @@ Ci sono alcuni casi in cui vorremmo implementare una qualche operazione per tipi
 Le generics possono essere utilizzate anche solo per rendere il codice più sicuro dal punto di vista dai tipi (e per fare meno conversioni a _runtime_), ad esempio quando definiamo una struct generica nessuno ci obbliga ad utilizzare effettivamente il _type parameter_ che introduciamo.
 
 ```go
+type DatabaseRef[T any] struct{ Id string }
+    
 type DatabaseTable[T any] struct {
 	Table    string
 	IdKey    string
@@ -411,8 +415,6 @@ func (t DatabaseTable[T]) RefForId(id string) DatabaseRef[T] {
 func (t DatabaseTable[T]) RefForValue(v T) DatabaseRef[T] {
 	return t.RefForId(*t.GetIdPtr(v))
 }
-
-type DatabaseRef[T any] struct{ Id string }
 
 func DatabaseRead[T any](db Database, table DatabaseTable[T], ref DatabaseRef[T]) (*T, error) {
 	query := fmt.Sprintf(`SELECT * FROM %s WHERE %s = ?`, table.Table, table.IdKey)
