@@ -373,6 +373,24 @@ questo porterebbe a vari problemi sul come generare il codice per questo tipo in
 
 Un modo potrebbe essere fare come Rust e non permettere definire interfacce/trait con metodi/funzioni che introducono nuovi tipi parametrici, vedremo in Go 2...
 
+<!-- 
+Alternativamente molto più semplicemente se abbiamo
+
+```go
+type Baz struct{}
+
+func (Baz) Bar[T any](T) {}
+```
+
+a questo punto se abbiamo un valore `b` di tipo `Baz` potremmo fare
+
+```
+var b Baz
+
+b[int](42)
+b[string]("example")
+``` -->
+
 ## Quando non usare le generics?
 
 Ci potrebbe venire in mente di scrivere una funzione per leggere tutto da un `io.Reader` aggiungendo il vincolo `io.Reader` al _type parameter_
