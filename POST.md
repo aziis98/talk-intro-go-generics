@@ -430,6 +430,11 @@ type DatabaseTable[T any] struct {
 	GetIdPtr func(entry T) *string
 }
 
+type DatabaseTableColumn[T any, C any] struct {
+	Table       string
+    ColumnName  string
+}
+
 func (t DatabaseTable[T]) RefForId(id string) DatabaseRef[T] {
 	return DatabaseRef[T]{id}
 }
@@ -440,6 +445,7 @@ func (t DatabaseTable[T]) RefForValue(v T) DatabaseRef[T] {
 
 func DatabaseRead[T any](db Database, table DatabaseTable[T], ref DatabaseRef[T]) (*T, error) {
 	query := fmt.Sprintf(`SELECT * FROM %s WHERE %s = ?`, table.Table, table.IdKey)
+	// SELECT * FROM users WHERE username = ?
 
 	result := db.Get(query, ref.Id)
 
@@ -494,7 +500,7 @@ che potremo utilizzare ad esempio
 user1 := &User{"j.smith", "John", "Smith"}
 
 // ref1 :: DatabaseRef[User]
-ref1,  _ := DatabaseWrite(db, UsersTable, u1)
+ref1,  _ := DatabaseWrite(db, UsersTable, user1)
 
 // user2 :: *User
 user2, _ := DatabaseRead(db, UsersTable, ref1)
