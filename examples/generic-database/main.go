@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"io"
 )
 
 type IdTable interface {
@@ -46,5 +48,77 @@ func Update[T IdTable](d DB, t Table[T], row T) error {
 }
 
 func Delete[T IdTable](d DB, t Table[T], id string) error {
+	return nil
+}
+
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+
+type Transporter interface {
+	Transport(peopleCount int) error
+}
+
+type Car struct {
+	Owner string
+}
+
+func (c *Car) Transport(count int) error {
+	if count > 5 {
+		return fmt.Errorf(`troppe persone`)
+	}
+
+	return nil
+}
+
+type Bus struct{}
+
+func (c *Bus) Transport(count int) error {
+	if count > 40 {
+		return fmt.Errorf(`troppe persone`)
+	}
+
+	return nil
+}
+
+type BrokenCar struct{}
+
+func (c *BrokenCar) Transport(count int) error {
+	return fmt.Errorf(`rotta!`)
+}
+
+func OurTrip(part1 Transporter, part2 Transporter) error {
+	if err := part1.Transport(3); err != nil {
+		return err
+	}
+	if err := part2.Transport(3); err != nil {
+		return err
+	}
+
 	return nil
 }

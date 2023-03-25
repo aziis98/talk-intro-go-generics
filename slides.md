@@ -142,6 +142,18 @@ func Min[T constraints.Ordered](x, y T) T {
 }
 ```
 
+```go
+var a, b int = 0, 1
+Min[int](a, b)
+```
+
+```go
+var a, b float32 = 3.14, 2.71 
+Min[float32](a, b)
+```
+
+---
+
 #### Type Inference
 
 ```go
@@ -168,6 +180,54 @@ func Min[T constraints.Ordered](x, y T) T {
 
     return y
 }
+```
+
+---
+
+```go
+type Liter float64
+
+type Meter float64
+
+type Kilogram float64
+```
+
+```go
+func Min[T float64](x, y T) T {
+    if x < y { 
+        return x
+    }
+    return y
+}
+```
+
+```go
+var a, b Liter = 1, 2
+Min(a, b) // Errore
+```
+
+---
+
+```go
+type Liter float64
+
+type Meter float64
+
+type Kilogram float64
+```
+
+```go
+func Min[T ~float64](x, y T) T {
+    if x < y { 
+        return x
+    }
+    return y
+}
+```
+
+```go
+var a, b Liter = 1, 2
+Min(a, b) // Ok
 ```
 
 ---
@@ -201,16 +261,6 @@ type Unsigned interface {
 ```
 
 <!-- Le interfacce possono introdurre questo type-set per limitare i tipi a cui vengono applicate, l'unico tipo che non possiamo utilizzare nei type-sets sono le interfacce con metodi. -->
-
----
-
-```go
-type Liter float64
-
-type Meter float64
-
-type Kilogram float64
-```
 
 ---
 
@@ -396,7 +446,7 @@ func WriteOneByte[T io.Writer](w T, data byte) {
 ...
 
 d := &bytes.Buffer{}
-WriteOneByte(d, 42)
+WriteOneByte[*bytes.Buffer](d, 42)
 ```
 
 ---
@@ -470,14 +520,14 @@ Utility HTTP
 ---
 
 ```go
+// library code
 type Validator interface {
     Validate() error
 }
 
 func DecodeAndValidateJSON[T Validator](r *http.Request) (T, error) {
     var value T
-    err := json.NewDecoder(r.Body).Decode(&value)
-    if err != nil {
+    if err := json.NewDecoder(r.Body).Decode(&value); err != nil {
         var zero T
         return zero, err
     }
@@ -494,6 +544,7 @@ func DecodeAndValidateJSON[T Validator](r *http.Request) (T, error) {
 ---
 
 ```go
+// client code
 type FooRequest struct {
     A int    `json:"a"`
     B string `json:"b"`
@@ -509,9 +560,9 @@ func (foo FooRequest) Validate() error {
 
     return nil
 }
+```
 
-...
-
+```go
 foo, err := DecodeAndValidateJSON[FooRequest](r)
 if err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -556,6 +607,50 @@ L'unico problema è che siamo obbligati a fare questo cast che non è molto este
 
 ```go
 var foo Validator = FooRequest{}
+```
+
+---
+
+<!-- _class: chapter -->
+
+# Confronto
+Vediamo un attimo come fungono internamente le generics del Go
+
+---
+
+```c
+// C?
+#define min(x, y) ({                \
+    typeof(x) _min1 = (x);          \
+    typeof(y) _min2 = (y);          \
+    (void) (&_min1 == &_min2);      \
+    _min1 < _min2 ? _min1 : _min2; })
+```
+
+```cpp
+// C++
+template<typename T>
+T min(T const& a, T const& b)
+{
+    return (a < b) ? a : b;
+}
+```
+
+---
+
+```go
+// Go
+func Min[T constraints.Ordered](x, y T) T {
+    if x < y { 
+        return x
+    }
+    return y
+}
+```
+
+```rust
+// Rust
+???
 ```
 
 ---
@@ -768,4 +863,30 @@ func AwaitAll(ws ...Waiter) error {
 
 ---
 
+<!-- _class: chapter -->
+
+# Conclusione
+
+---
+
+<style scoped>
+section {
+    text-align: left;
+}
+</style>
+
+### Regole generali
+
+Per scrivere _codice generico_ in Go
+
+- Se l'implementazione dell'operazione che vogliamo supportare non dipende del tipo usato allora conviene usare dei **type-parameter**
+
+- Se invece dipende dal tipo usato allora è meglio usare delle **interfacce**
+
+- Se invece dipende sia dal tipo e deve anche funzionare per tipi che non supportano metodi (ad esempio per i tipi primitivi) allora conviene usare **reflection** 
+
+---
+
 # Fine :C
+
+_Domande_
