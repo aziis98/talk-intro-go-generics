@@ -90,7 +90,7 @@ func MinInt8(x, y int8) int8 {
     return y
 }
 
-func MinInt16(x, y int16) int8 {
+func MinInt16(x, y int16) int16 {
     if x < y {
         return x
     }
@@ -510,6 +510,66 @@ d := &bytes.Buffer{} /* (*bytes.Buffer) */
 (*bytes.Buffer).Write(d /* (*bytes.Buffer) */, []byte{ 42 })
 ```
 
+
+---
+
+<!-- _class: chapter -->
+
+# Confronto con altri linguaggi
+Vediamo come funzionano le generics in Go confrontandole con altri linguaggi
+
+---
+
+## C
+
+```c
+// versione semplificata da linux/minmax.h
+#define min(x, y) ({                \ // block expr (GCC extension)
+    typeof(x) _min1 = (x);          \ // eval x once
+    typeof(y) _min2 = (y);          \ // eval y once
+    (void) (&_min1 == &_min2);      \ // check same type 
+    _min1 < _min2 ? _min1 : _min2;  \ // do comparison
+}) 
+```
+
+---
+
+## C++
+
+```cpp
+template<typename T>
+T min(T const& a, T const& b)
+{
+    return (a < b) ? a : b;
+}
+```
+
+---
+
+## Rust
+
+```rust
+pub fn min<T: PartialOrd>(a: T, b: T) -> T {
+    if a < b {
+        a
+    } else {
+        b
+    }
+}
+```
+
+---
+
+## Go _Gcshape Stenciling_
+
+-  _A **gcshape** (or gcshape grouping) is a collection of types that can all **share the same instantiation of a generic function/method** in our implementation when specified as one of the type arguments_.
+
+- _Two concrete types are in the same gcshape grouping if and only if they have the **same underlying type** or they are **both pointer types**._
+
+- _In order to avoid creating a different function instantiation for each invocation of a generic function/method with distinct type arguments (which would be pure stenciling), we **pass a dictionary along with every call** to a generic function/method_.
+
+<!-- :link: [Go 1.18 implementation of generics via dictionaries and gcshape stenciling](https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md) -->
+
 ---
 
 <!-- _class: chapter -->
@@ -607,50 +667,6 @@ L'unico problema è che siamo obbligati a fare questo cast che non è molto este
 
 ```go
 var foo Validator = FooRequest{}
-```
-
----
-
-<!-- _class: chapter -->
-
-# Confronto
-Vediamo un attimo come fungono internamente le generics del Go
-
----
-
-```c
-// C?
-#define min(x, y) ({                \
-    typeof(x) _min1 = (x);          \
-    typeof(y) _min2 = (y);          \
-    (void) (&_min1 == &_min2);      \
-    _min1 < _min2 ? _min1 : _min2; })
-```
-
-```cpp
-// C++
-template<typename T>
-T min(T const& a, T const& b)
-{
-    return (a < b) ? a : b;
-}
-```
-
----
-
-```go
-// Go
-func Min[T constraints.Ordered](x, y T) T {
-    if x < y { 
-        return x
-    }
-    return y
-}
-```
-
-```rust
-// Rust
-???
 ```
 
 ---
@@ -795,13 +811,6 @@ func (p Promise[T]) Await() (T, error) {
     <-p.done
     return p.value, p.err
 }
-
-type Waiter { Wait() error }
-
-func (p Promise[T]) Wait() error {
-    <-p.done
-    return p.err
-}
 ```
 
 ---
@@ -809,11 +818,11 @@ func (p Promise[T]) Wait() error {
 ```go
 type PromiseFunc[T any] func(resolve func(T), reject func(error))
 
-func Start[T any](f PromiseFunc[T]) *Promise[T] {
+func Run[T any](f PromiseFunc[T]) *Promise[T] {
     done := make(chan struct{})
     p := Promise{ done: done }
 
-    f(
+    go f(
         func(value T) { p.value = value; done <- struct{} },
         func(err error) { p.err = err; done <- struct{} }
     )
@@ -825,6 +834,13 @@ func Start[T any](f PromiseFunc[T]) *Promise[T] {
 ---
 
 ```go
+type Waiter { Wait() error }
+
+func (p Promise[T]) Wait() error {
+    <-p.done
+    return p.err
+}
+
 func AwaitAll(ws ...Waiter) error {
     var wg sync.WaitGroup
     wg.Add(len(ws))
@@ -863,6 +879,157 @@ func AwaitAll(ws ...Waiter) error {
 
 ---
 
+```go
+Validate()
+```
+
+---
+
+<!-- _class: chapter -->
+
+# 1 + 1 = 2
+_Proof checking_ in Go 
+
+---
+
+## Premesse
+
+```go
+type Bool interface{ isBool() }
+
+type Term interface{ isTerm() }
+
+type Term2Term interface{ isTerm2Term() }
+
+// trick to encode higher-kinded types
+type V[H Term2Term, T Term] Term
+```
+
+---
+
+## Assiomi dei Naturali 
+
+```go
+type Zero Term
+type Succ Term2Term
+
+// Alcuni alias utili
+type One = V[Succ, Zero]
+type Two = V[Succ, V[Succ, Zero]]
+type Three = V[Succ, V[Succ, V[Succ, Zero]]]
+```
+
+---
+
+## Uguaglianza
+
+```go
+type Eq[A, B any] Bool
+
+// Eq_Refl ~> forall x : x = x
+func Eq_Reflexive[T any]() Eq[T, T] { 
+    panic("axiom")
+}
+
+// Eq_Symmetric ~> forall a, b: a = b => b = a
+func Eq_Symmetric[A, B any](_ Eq[A, B]) Eq[B, A] { 
+    panic("axiom")
+}
+
+// Eq_Transitive ~> forall a, b, c: a = b e b = c => a = c
+func Eq_Transitive[A, B, C any](_ Eq[A, B], _ Eq[B, C]) Eq[A, C] { 
+    panic("axiom")
+}
+```
+
+---
+
+## "Funzionalità dell'uguale"
+
+Per ogni funzione `F`, ovvero tipo vincolato all'interfaccia `Term2Term` vorremmo dire che
+
+```
+               F
+Eq[ A , B ] ------> Eq[ F[A] , F[B] ] 
+
+```
+
+---
+
+## "Funzionalità dell'uguale"
+
+Data una funzione ed una dimostrazione che due cose sono uguali allora possiamo applicare la funzione ed ottenere altre cose uguali
+
+```go
+// Function_Eq ~> forall f function, forall a, b term:
+//     a = b  => f(a) = f(b)
+func Function_Eq[F Term2Term, A, B Term](_ Eq[A, B]) Eq[V[F, A], V[F, B]] {
+    panic("axiom")
+}
+```
+
+---
+
+## Assiomi dell'addizione
+
+```go
+type Plus[L, R Term] Term
+
+// "n + 0 = n"
+
+// Plus_Zero ~> forall n, m: n + succ(m) = succ(n + m)
+func Plus_Zero[N Term]() Eq[Plus[N, Zero], N] { 
+    panic("axiom")
+}
+
+// "n + (m + 1) = (n + m) + 1"
+
+// Plus_Sum ~> forall a, m: n + succ(m) = succ(n + m)
+func Plus_Sum[N, M Term]() Eq[
+    Plus[N, V[Succ, M]], 
+    V[Succ, Plus[N, M]],
+] { panic("axiom") }
+```
+
+---
+
+## 1 + 1 = 2
+
+```go
+func Theorem_OnePlusOneEqTwo() Eq[Plus[One, One], Two] {
+    var en1 Eq[ Plus[One, Zero], One ] = Plus_Zero[One]()
+
+    var en2 Eq[
+        V[Succ, Plus[One, Zero]],
+        Two
+    ] = Function_Eq[Succ](en1)
+
+    var en3 Eq[
+        Plus[One, One],
+        V[Succ, Plus[One, Zero]],
+    ] = Plus_Sum[One, Zero]()
+
+    return Eq_Transitive(en3, en2)
+}
+```
+
+---
+
+## 1 + 1 = 2
+
+```go
+func Theorem_OnePlusOneEqTwo() Eq[Plus[One, One], Two] {
+    return Eq_Transitive(
+        Plus_Sum[One, Zero](), 
+        Function_Eq[Succ](
+            Plus_Zero[One](),
+        ),
+    )
+}
+```
+
+---
+
 <!-- _class: chapter -->
 
 # Conclusione
@@ -890,3 +1057,19 @@ Per scrivere _codice generico_ in Go
 # Fine :C
 
 _Domande_
+
+---
+
+<style scoped>
+li {
+    font-size: 80%;
+}
+</style>
+
+## Bibliografia
+
+- <https://go.dev/blog/intro-generics>
+
+- <https://go.dev/blog/when-generics>
+
+- <https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md>
