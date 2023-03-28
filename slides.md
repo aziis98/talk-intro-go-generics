@@ -136,7 +136,7 @@ return y
 
 ---
 
-#### Type Parameters & Type Sets
+#### Type Parameters
 
 ```go
 import "golang.org/x/exp/constraints"
@@ -191,16 +191,18 @@ func Min[T constraints.Ordered](x, y T) T {
 
 ---
 
+#### Type Sets
+
 ```go
-type Liter float64
+type Liter32 float32
 
-type Meter float64
+type Meter64 float64
 
-type Kilogram float64
+type Kilogram64 float64
 ```
 
 ```go
-func Min[T float64](x, y T) T {
+func Min[T float64|float32](x, y T) T {
     if x < y { 
         return x
     }
@@ -215,29 +217,46 @@ Min(a, b) // Errore
 
 ---
 
+#### Type Sets
+
 ```go
 type Liter float64
 
-type Meter float64
+type Meter64 float64
 
-type Kilogram float64
+type Kilogram64 float64
 ```
 
 ```go
-func Min[T ~float64](x, y T) T {
-    if x < y { 
-        return x
-    }
+func Min[T ~float64|~float32](x, y T) T {
+    if x < y { return x }
     return y
 }
 ```
 
 ```go
-var a, b Liter = 1, 2
+var a, b float32 = 1.0, 2.0
+Min(a, b) // Ok
+var a, b float64 = 1.0, 2.0
+Min(a, b) // Ok
+
+var a, b Liter = 1.0, 2.0
 Min(a, b) // Ok
 ```
 
 ---
+
+#### Type Sets
+
+```go
+type Float interface {
+    ~float32 | ~float64
+}
+```
+
+---
+
+#### Type Sets
 
 ```go
 package constraints
