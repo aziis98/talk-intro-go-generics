@@ -5,7 +5,7 @@ Repo con tutti gli esempi e le slides della presentazione.
 
 **Descrizione.** In questo talk introdurremo le generics del Go 1.18 e vedremo alcuni _pattern_ ed _anti-pattern_ del loro utilizzo. 
 
-- [Scarica il PDF con le slides](https://github.com/aziis98/talk-intro-go-generics/blob/build/slides.pdf)
+- [Scarica il PDF con le slides](https://github.com/aziis98/talk-intro-go-generics/raw/build/slides.pdf)
 
 &nbsp;
 
