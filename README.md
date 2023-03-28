@@ -1,13 +1,41 @@
-# Talk | Introduzione alle Generics in Go
 
-Preview del post da cui è derivato il talk
+# Introduzione alle Generics in Go - DevFest GDG
 
-[https://dev.to/aziis98/introduzione-alle-generics-in-go-15p-temp-slug-4472888](https://dev.to/aziis98/introduzione-alle-generics-in-go-15p-temp-slug-4472888?preview=973a2f7297ea145eed3f6655bc5f5d85f6215c621ff992e0ac60b2df691d1f65c4cf1a1d498c017abc4c2c540312ea989424865bcc5c7adb0f826f41)
+Repo con tutti gli esempi e le slides della presentazione.
+
+## Setup
+
+These slides are made using _Marp_
+
+```bash
+$ npm install
+```
 
 ## Usage
 
-These slides are made using Marp, to preview them use
+To preview and build the slides use
 
-```go
-$ marp -p slides.md
+```bash
+# Show slides preview
+$ npm run preview
+
+# Build slides
+$ npm run build:html
+$ npm run build:pdf
+```
+
+## Go
+
+There is a Makefile with various utilities for running, build and decompiling the Go examples. 
+
+```bash
+# Show usage
+$ make
+
+# Run/build/decomp examples
+$ make run-<subproject> 
+$ make compile-<subproject> 
+$ make compile-noinline-<subproject> 
+$ make decomp-<subproject> 
+$ make decomp-noinline-<subproject> 
 ```

@@ -1,7 +1,16 @@
 {
+  "name": "2023-04-01-intro-go-generics",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "dev": "slidev", 
-    "build": "slidev build", 
-    "export": "slidev export" 
+    "preview": "marp --html -p -o out/slides.html slides.md",
+    "build:html": "marp --html -o out/slides.html slides.md",
+    "build:pdf": "marp --pdf --html --allow-local-files -o out/slides.pdf slides.md"
+  },
+  "author": "aziis98 <antonio.delucreziis@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@marp-team/marp-cli": "^2.4.0"
   }
 }

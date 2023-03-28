@@ -51,6 +51,13 @@ Antonio De Lucreziis, studente di Matematica e macchinista del PHC
 
 Il PHC è un gruppo di studenti di Matematica con interessi per, open source, Linux, self-hosting e soprattutto smanettare sia con hardware e software (veniteci pure a trovare!)
 
+&nbsp;
+
+<div style="display: flex; align-items: center; justify-content: center; gap: 2rem;">
+<img src="devfest-logo.png" height="100" />
+<img src="logo-circuit-board.svg" height="100" />
+</div>
+
 ---
 
 _The Go 1.18 release adds support for generics. Generics are the biggest change we’ve made to Go since the first open source release_
