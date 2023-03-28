@@ -1,0 +1,26 @@
+name: Render Marp Slides
+on: [push]
+jobs:
+  build_slides:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Set up Git repository
+        uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: *
+      - name: Install dependencies
+        run: npm install
+      - name: Build slides to HTML
+        run: npm run build:html
+      - name: Build slides to PDF
+        run: npm run build:pdf
+      - name: deploy on orphan branch
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          publish_branch: build
+          force_orphan: true
