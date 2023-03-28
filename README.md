@@ -3,6 +3,16 @@
 
 Repo con tutti gli esempi e le slides della presentazione.
 
+&nbsp;
+
+<div align="center">
+<img src="/assets/devfest-logo.png" height="100" />
+&nbsp; &nbsp;
+<img src="/assets/logo-circuit-board.svg" height="100" />
+</div>
+
+&nbsp;
+
 ## Setup
 
 These slides are made using _Marp_
