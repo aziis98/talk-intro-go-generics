@@ -132,9 +132,17 @@ return y
 
 ---
 
-## La Soluzione
+## Soluzioni Pre-Generics
+
+- Fare una funzione che prende `any` e mettere tanti switch
+
+- Utilizzare `go generate` [...]
+
+- Copia incollare tante volte la funzione per ogni tipo
 
 ---
+
+## Soluzione Post-Generics
 
 #### Type Parameters
 
@@ -152,9 +160,7 @@ func Min[T constraints.Ordered](x, y T) T {
 ```go
 var a, b int = 0, 1
 Min[int](a, b)
-```
-
-```go
+...
 var a, b float32 = 3.14, 2.71 
 Min[float32](a, b)
 ```
@@ -166,9 +172,7 @@ Min[float32](a, b)
 ```go
 var a, b int = 0, 1
 Min(a, b)
-```
-
-```go
+...
 var a, b float32 = 3.14, 2.71 
 Min(a, b)
 ```
@@ -179,14 +183,49 @@ Min(a, b)
 code { font-size: 150% }
 </style>
 
-```go
-func Min[T constraints.Ordered](x, y T) T {
-    if x < y { 
-        return x
-    }
+```
+[T Vincolo1, R interface{ Method(), ... }, ...]
+```
 
-    return y
-}
+---
+
+<style scoped>section { justify-content: space-between; }</style>
+
+## Type Sets
+
+<img src="../assets/method-sets.png" />
+
+&nbsp;
+
+---
+
+<style scoped>section { justify-content: space-between; }</style>
+
+## Type Sets
+
+<img src="../assets/type-sets.png" />
+
+&nbsp;
+
+
+---
+
+<style scoped>section { justify-content: space-between; }</style>
+
+## Type Sets
+
+<img src="../assets/type-sets-2.png" />
+
+&nbsp;
+
+---
+
+#### Type Sets (Sintassi)
+
+```go
+[T interface{}] ~> [T any]
+
+[T interface{ int | float32 }] ~> [T int | float32]
 ```
 
 ---
@@ -194,55 +233,47 @@ func Min[T constraints.Ordered](x, y T) T {
 #### Type Sets
 
 ```go
-type Liter32 float32
-
-type Meter64 float64
-
-type Kilogram64 float64
-```
-
-```go
-func Min[T float64|float32](x, y T) T {
-    if x < y { 
-        return x
-    }
-    return y
-}
-```
-
-```go
-var a, b Liter32 = 1, 2
-Min(a, b) // Errore
-```
-
----
-
-#### Type Sets
-
-```go
-type Liter32 float32
-
-type Meter64 float64
-
-type Kilogram64 float64
-```
-
-```go
-func Min[T ~float64|~float32](x, y T) T {
+func SumTwoIntegers[T int](x, y int) T {
     if x < y { return x }
     return y
 }
 ```
 
 ```go
-var a, b float32 = 1.0, 2.0
-Min(a, b) // Ok
-var a, b float64 = 1.0, 2.0
-Min(a, b) // Ok
-
-var a, b Liter32 = 1.0, 2.0
-Min(a, b) // Ok
+type Liter int
 ```
+
+```go
+var a, b int = 1, 2
+SumTwoIntegers(a, b) // Ok
+
+var a, b Liter = 1, 2
+SumTwoIntegers(a, b) // Errore
+```
+
+---
+
+#### Type Sets
+
+```go
+func SumTwoIntegers[T ~int](x, y int) T {
+    if x < y { return x }
+    return y
+}
+```
+
+```go
+type Liter int
+```
+
+```go
+var a, b int = 1, 2
+SumTwoIntegers(a, b) // Ok
+
+var a, b Liter = 1, 2
+SumTwoIntegers(a, b) // Ok
+```
+
 
 ---
 
@@ -292,35 +323,21 @@ type Unsigned interface {
 ...
 ```
 
-<!-- Le interfacce possono introdurre questo type-set per limitare i tipi a cui vengono applicate, l'unico tipo che non possiamo utilizzare nei type-sets sono le interfacce con metodi. -->
+---
+
+<!-- _class: chapter -->
+
+# Tipi Generici
 
 ---
 
 <style scoped>
-code { font-size: 150% }
+code { font-size: 120% }
 </style>
-
-## Tipi Generici
-
-```go
-type Stack[T interface{}] []T
-```
-
-<!-- In realtà non serve usare "interface{}" tutte le volte -->
-
----
-
-<style scoped>
-code { font-size: 150% }
-</style>
-
-## Tipi Generici
 
 ```go
 type Stack[T any] []T
 ```
-
----
 
 ```go
 func (s *Stack[T]) Push(value T) {
@@ -373,12 +390,11 @@ func Zero[T any]() T {
 
 <!-- _class: chapter -->
 
-# Pattern (1)
-Quando usare le generics?
+# Pattern: Tipi Contenitore
 
 ---
 
-### Tipi "Contenitore"
+### Tipi generici nativi
 
 - `[n]T` 
     
@@ -395,12 +411,6 @@ Quando usare le generics?
 - `chan T` 
     
     Canali per elementi di tipo `T`
-
----
-
-In Go sono sempre esistite queste strutture dati "generiche"
-
-Solo che prima delle generics non era possibile definire algoritmi generali per questi tipi di container, ora invece possiamo ed infatti alcune di questi sono "già in prova"
 
 ---
 
@@ -458,7 +468,7 @@ Esempio notevole: <https://github.com/zyedidia/generic> (1K:star: su GitHub)
 
 <!-- _class: chapter -->
 
-# Anti-Pattern (1)
+# Anti-Pattern 1
 Utility HTTP
 
 ---
@@ -549,7 +559,7 @@ Quindi nella maggior parte dei casi se ci ritroviamo a scrivere una funzione gen
 
 <!-- _class: chapter -->
 
-# Anti-Pattern (2)
+# Anti-Pattern 2
 Generics vs Interfacce
 
 ---
@@ -638,60 +648,6 @@ d := &bytes.Buffer{} /* (*bytes.Buffer) */
 
 (*bytes.Buffer).Write(d /* (*bytes.Buffer) */, []byte{ 42 })
 ```
-
-
----
-
-<!-- _class: chapter -->
-
-# Confronto con altri linguaggi
-Vediamo come funzionano le generics in Go confrontandole con altri linguaggi
-
----
-
-## C
-
-```c
-// versione semplificata da linux/minmax.h
-#define min(x, y) ({                \ // block expr (GCC extension)
-    typeof(x) _min1 = (x);          \ // eval x once
-    typeof(y) _min2 = (y);          \ // eval y once
-    (void) (&_min1 == &_min2);      \ // check same type 
-    _min1 < _min2 ? _min1 : _min2;  \ // do comparison
-}) 
-```
-
-Impl. ⇝ _Sostituzione testuale post-tokenizzazione_
-
----
-
-## C++
-
-```cpp
-template<typename T>
-T min(T const& a, T const& b)
-{
-    return (a < b) ? a : b;
-}
-```
-
-Impl. ⇝ _se funziona allora ok_
-
----
-
-## Rust
-
-```rust
-pub fn min<T: PartialOrd>(a: T, b: T) -> T {
-    if a < b {
-        a
-    } else {
-        b
-    }
-}
-```
-
-Impl. ⇝ _Monomorfizzazione_
 
 ---
 
@@ -1175,3 +1131,60 @@ li {
 - <https://go.dev/blog/when-generics>
 
 - <https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md>
+
+--- 
+
+
+---
+
+<!-- _class: chapter -->
+
+# Confronto con altri linguaggi
+Vediamo come funzionano le generics in Go confrontandole con altri linguaggi
+
+---
+
+## C
+
+```c
+// versione semplificata da linux/minmax.h
+#define min(x, y) ({                \ // block expr (GCC extension)
+    typeof(x) _min1 = (x);          \ // eval x once
+    typeof(y) _min2 = (y);          \ // eval y once
+    (void) (&_min1 == &_min2);      \ // check same type 
+    _min1 < _min2 ? _min1 : _min2;  \ // do comparison
+}) 
+```
+
+Impl. ⇝ _Sostituzione testuale post-tokenizzazione_
+
+---
+
+## C++
+
+```cpp
+template<typename T>
+T min(T const& a, T const& b)
+{
+    return (a < b) ? a : b;
+}
+```
+
+Impl. ⇝ _se funziona allora ok_
+
+---
+
+## Rust
+
+```rust
+pub fn min<T: PartialOrd>(a: T, b: T) -> T {
+    if a < b {
+        a
+    } else {
+        b
+    }
+}
+```
+
+Impl. ⇝ _Monomorfizzazione_
+

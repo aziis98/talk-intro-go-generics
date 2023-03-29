@@ -58,6 +58,13 @@ func MinFloat64(x, y float64) float64 {
 
 // with go generics
 
+func MinFloat[T float64 | float32](x, y T) T {
+	if x < y {
+		return x
+	}
+	return y
+}
+
 func Min[T constraints.Ordered](x, y T) T {
 	if x < y {
 		return x
