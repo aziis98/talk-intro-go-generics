@@ -211,7 +211,7 @@ func Min[T float64|float32](x, y T) T {
 ```
 
 ```go
-var a, b Liter = 1, 2
+var a, b Liter32 = 1, 2
 Min(a, b) // Errore
 ```
 
@@ -220,7 +220,7 @@ Min(a, b) // Errore
 #### Type Sets
 
 ```go
-type Liter float64
+type Liter32 float32
 
 type Meter64 float64
 
@@ -240,7 +240,7 @@ Min(a, b) // Ok
 var a, b float64 = 1.0, 2.0
 Min(a, b) // Ok
 
-var a, b Liter = 1.0, 2.0
+var a, b Liter32 = 1.0, 2.0
 Min(a, b) // Ok
 ```
 
@@ -249,9 +249,15 @@ Min(a, b) // Ok
 #### Type Sets
 
 ```go
+package constraints
+
+...
+
 type Float interface {
     ~float32 | ~float64
 }
+
+...
 ```
 
 ---
@@ -350,12 +356,18 @@ func (s *Stack[T]) Pop() (T, bool) {
 
 ---
 
+Per ora ci tocca utilizzare questa funzione di _utility_
+
 ```go
 func Zero[T any]() T {
     var zero T
     return zero
 }
 ```
+
+&nbsp;
+
+<https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#the-zero-value>
 
 ---
 
@@ -447,6 +459,97 @@ Esempio notevole: <https://github.com/zyedidia/generic> (1K:star: su GitHub)
 <!-- _class: chapter -->
 
 # Anti-Pattern (1)
+Utility HTTP
+
+---
+
+```go
+// library code
+type Validator interface {
+    Validate() error
+}
+
+func DecodeAndValidateJSON[T Validator](r *http.Request) (T, error) {
+    var value T
+    if err := json.NewDecoder(r.Body).Decode(&value); err != nil {
+        var zero T
+        return zero, err
+    }
+
+    if err := value.Validate(); err != nil {
+        var zero T
+        return zero, err
+    }
+
+    return value, nil
+}
+```
+
+---
+
+```go
+// client code
+type FooRequest struct {
+    A int    `json:"a"`
+    B string `json:"b"`
+}
+
+func (foo FooRequest) Validate() error {
+    if foo.A < 0 {
+        return fmt.Errorf(`parameter "a" cannot be lesser than zero`)
+    }
+    if !strings.HasPrefix(foo.B, "baz-") {
+        return fmt.Errorf(`parameter "b" has wrong prefix`)
+    }
+
+    return nil
+}
+```
+
+```go
+foo, err := DecodeAndValidateJSON[FooRequest](r)
+if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+}
+```
+
+---
+
+```go
+func DecodeAndValidateJSON(r *http.Request, target Validator) error {
+    err := json.NewDecoder(r.Body).Decode(target)
+    if err != nil {
+        return err
+    }
+
+    if err := target.Validate(); err != nil {
+        return err
+    }
+
+    return nil
+}
+
+...
+
+var foo FooRequest
+if err := DecodeAndValidateJSON(r, &foo); err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+}
+```
+
+In realtà anche in questo caso non serviva introdurre necessariamente delle generics
+
+---
+
+Quindi nella maggior parte dei casi se ci ritroviamo a scrivere una funzione generica con un **parametro vincolato ad un'interfaccia** forse dobbiamo porci qualche domanda
+
+---
+
+<!-- _class: chapter -->
+
+# Anti-Pattern (2)
 Generics vs Interfacce
 
 ---
@@ -558,6 +661,8 @@ Vediamo come funzionano le generics in Go confrontandole con altri linguaggi
 }) 
 ```
 
+Impl. ⇝ _Sostituzione testuale post-tokenizzazione_
+
 ---
 
 ## C++
@@ -569,6 +674,8 @@ T min(T const& a, T const& b)
     return (a < b) ? a : b;
 }
 ```
+
+Impl. ⇝ _se funziona allora ok_
 
 ---
 
@@ -584,116 +691,21 @@ pub fn min<T: PartialOrd>(a: T, b: T) -> T {
 }
 ```
 
+Impl. ⇝ _Monomorfizzazione_
+
 ---
 
-## Go _Gcshape Stenciling_
+#### Go 1.18 Implementation of Generics via Dictionaries and Gcshape Stenciling
 
--  _A **gcshape** (or gcshape grouping) is a collection of types that can all **share the same instantiation of a generic function/method** in our implementation when specified as one of the type arguments_.
+-  _A **gcshape** (or gcshape grouping) is a collection of types that all **share the same instantiation of a generic function/method**_.
 
 - _Two concrete types are in the same gcshape grouping if and only if they have the **same underlying type** or they are **both pointer types**._
 
-- _In order to avoid creating a different function instantiation for each invocation of a generic function/method with distinct type arguments (which would be pure stenciling), we **pass a dictionary along with every call** to a generic function/method_.
+- _To avoid creating a different function instantiation for each generic call with distinct type arguments (which would be pure stenciling), we **pass a dictionary along with every call**_.
+
+:link: [generics-implementation-dictionaries-go1.18.md](https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md)
 
 <!-- :link: [Go 1.18 implementation of generics via dictionaries and gcshape stenciling](https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md) -->
-
----
-
-<!-- _class: chapter -->
-
-# Anti-Pattern (2)
-Utility HTTP
-
----
-
-```go
-// library code
-type Validator interface {
-    Validate() error
-}
-
-func DecodeAndValidateJSON[T Validator](r *http.Request) (T, error) {
-    var value T
-    if err := json.NewDecoder(r.Body).Decode(&value); err != nil {
-        var zero T
-        return zero, err
-    }
-
-    if err := value.Validate(); err != nil {
-        var zero T
-        return zero, err
-    }
-
-    return value, nil
-}
-```
-
----
-
-```go
-// client code
-type FooRequest struct {
-    A int    `json:"a"`
-    B string `json:"b"`
-}
-
-func (foo FooRequest) Validate() error {
-    if foo.A < 0 {
-        return fmt.Errorf(`parameter "a" cannot be lesser than zero`)
-    }
-    if !strings.HasPrefix(foo.B, "baz-") {
-        return fmt.Errorf(`parameter "b" has wrong prefix`)
-    }
-
-    return nil
-}
-```
-
-```go
-foo, err := DecodeAndValidateJSON[FooRequest](r)
-if err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-}
-```
-
----
-
-```go
-func DecodeAndValidateJSON(r *http.Request, target *Validator) error {
-    err := json.NewDecoder(r.Body).Decode(target)
-    if err != nil {
-        return err
-    }
-
-    if err := (*target).Validate(); err != nil {
-        return err
-    }
-
-    return nil
-}
-
-...
-
-var foo Validator = FooRequest{}
-if err := DecodeAndValidateJSON(r, &foo); err != nil {
-    http.Error(w, err.Error(), http.StatusInternalServerError)
-    return
-}
-```
-
-In realtà anche in questo caso non serviva introdurre necessariamente delle generics
-
----
-
-<style scoped>
-code { font-size: 150% }
-</style>
-
-L'unico problema è che siamo obbligati a fare questo cast che non è molto estetico
-
-```go
-var foo Validator = FooRequest{}
-```
 
 ---
 
@@ -728,42 +740,67 @@ struct Foo<T> { a: String, foo_type: PhantomData<T> }
 Proviamo ad usare questa tecnica per rendere _type-safe_ l'interfaccia con `*sql.DB`
 
 ```go
+type DatabaseRef[T any] string
+```
+
+```go
+package tables 
+
+// tables metadata
+var Users = Table[User]{ ... }
+var Products = Table[Product]{ ... }
+```
+
+
+```go
+userRef1 := DatabaseRef[User]("j.smith@example.org") 
+
+...
+// Ok
+user1, err := database.Read(dbConn, tables.Users, userRef1) 
+
+// Error
+user2, err := database.Read(dbConn, tables.Products, userRef1)
+```
+
+---
+
+```go
 package database
 
-type IdTable interface {
+type WithPK interface {
     PrimaryKey() *string
-    Columns()    []any
 }
 
-type Ref[T IdTable] string
+type Ref[T WithPK] string
 
-type Table[T IdTable] struct {
+type Table[T WithPK] struct {
     Name     string
     PkColumn string
+    Columns  func(*T) []any
 }
 ```
 
 ---
 
 ```go
-// a random db library
-// type DB = *sql.DB
+package database
 
-func Create[T IdTable](d DB, t Table[T], row T) (Ref[T], error) 
+func Create[T WithPK](d DB, t Table[T], row T) (Ref[T], error) 
 
-func Insert[T IdTable](d DB, t Table[T], row T) (Ref[T], error)
+func Insert[T WithPK](d DB, t Table[T], row T) (Ref[T], error)
 
-func Read[T IdTable](d DB, t Table[T], ref Ref[T]) (*T, error) 
+func Read[T WithPK](d DB, t Table[T], ref Ref[T]) (*T, error) 
 
-func Update[T IdTable](d DB, t Table[T], row T) error 
+func Update[T WithPK](d DB, t Table[T], row T) error 
 
-func Delete[T IdTable](d DB, t Table[T], id string) error 
+func Delete[T WithPK](d DB, t Table[T], id Ref[T]) error 
 ```
 
 ---
 
 ```go
-func Read[T IdTable](d DB, t Table[T], ref Ref[T]) (*T, error) {
+func Read[T WithPK](d DB, t Table[T], ref Ref[T]) (*T, error) {
     result := d.QueryRow(
         fmt.Sprintf(
             `SELECT * FROM %s WHERE %s = ?`, 
@@ -773,7 +810,7 @@ func Read[T IdTable](d DB, t Table[T], ref Ref[T]) (*T, error) {
     )
 
     var value T
-    if err := result.Scan(value.Columns()...); err != nil {
+    if err := result.Scan(t.Columns(&value)...); err != nil {
         return nil, err
     }
 
@@ -784,6 +821,8 @@ func Read[T IdTable](d DB, t Table[T], ref Ref[T]) (*T, error) {
 ---
 
 ```go
+package model
+
 type User struct {
     Username  string
     FullName  string
@@ -793,28 +832,30 @@ type User struct {
 func (u *User) PrimaryKey() *string {
     return &u.Username
 }
+```
 
-func (u User) Columns() []any {
-    return []any{ &u.Username, &u.FullName, &u.Age }
-}
+```go
+package tables
 
-var UsersTable = Table[User]{
+var Users = Table[User]{
     Name: "users",
     PkColumn: "username",
+    Columns: func(u *User) []any {
+        return []any{ &u.Username, &u.FullName, &u.Age }
+    }
 }
 ```
 
 ---
 
 ```go
-db := ...
+user1 := &model.User{ "j.smith@example.org", "John Smith", 36 }
 
-user1 := &User{ "aziis98", "Antonio De Lucreziis", 24 }
-ref1, _ := database.Insert(db, UsersTable, user1)
+userRef1, _ := database.Insert(db, tables.Users, user1)
 
 ...
 
-user1, _ := database.Read(db, UsersTable, ref1) 
+user1, _ := database.Read(db, tables.Users, userRef1) 
 ```
 
 ---
@@ -822,7 +863,7 @@ user1, _ := database.Read(db, UsersTable, ref1)
 <!-- _class: chapter -->
 
 # Altro esempio caotico
-Vediamo come implementare le promise in Go con le generics
+Vediamo come implementare le _promise_ in Go con le generics
 
 ---
 
@@ -836,6 +877,18 @@ type Promise[T any] struct {
 func (p Promise[T]) Await() (T, error) {
     <-p.done
     return p.value, p.err
+}
+```
+
+---
+
+```go
+func Resolve[T](value T) *Promise[T] {
+    return &Promise{ value: value }
+}
+
+func Reject[T](err error) *Promise[T] {
+    return &Promise{ error: err }
 }
 ```
 
@@ -860,7 +913,7 @@ func Run[T any](f PromiseFunc[T]) *Promise[T] {
 ---
 
 ```go
-type Waiter { Wait() error }
+type Waiter interface { Wait() error }
 
 func (p Promise[T]) Wait() error {
     <-p.done
@@ -906,7 +959,28 @@ func AwaitAll(ws ...Waiter) error {
 ---
 
 ```go
-Validate()
+func ResolveInto[T any](p *Promise[T], target *T) *Promise[T] {
+    return Run[T](func(resolve func(T), reject func(error)) {
+        value, err := p.Await()
+        if err != nil {
+            reject(err)
+            return
+        }
+
+        *target = value
+        resolve(value)
+    })
+}
+```
+
+```go
+err := AwaitAll(
+    ResolveInto(httpRequest1, &result1), // :: *Promise[int]
+    ResolveInto(httpRequest2, &result2), // :: *Promise[struct{ ... }] 
+    ResolveInto(httpRequest3, &result3), // :: *Promise[any]
+    timer1,                              // :: *Promise[struct{}]
+)
+...
 ```
 
 ---
@@ -927,7 +1001,7 @@ type Term interface{ isTerm() }
 
 type Term2Term interface{ isTerm2Term() }
 
-// trick to encode higher-kinded types
+// Trick per codificare higher-kinded types
 type V[H Term2Term, T Term] Term
 ```
 
@@ -952,17 +1026,20 @@ type Three = V[Succ, V[Succ, V[Succ, Zero]]]
 ```go
 type Eq[A, B any] Bool
 
-// Eq_Refl ~> forall x : x = x
+// Eq_Refl ovvero l'assioma 
+//   forall x : x = x
 func Eq_Reflexive[T any]() Eq[T, T] { 
     panic("axiom")
 }
 
-// Eq_Symmetric ~> forall a, b: a = b => b = a
+// Eq_Symmetric ovvero l'assioma 
+//   forall a, b: a = b => b = a
 func Eq_Symmetric[A, B any](_ Eq[A, B]) Eq[B, A] { 
     panic("axiom")
 }
 
-// Eq_Transitive ~> forall a, b, c: a = b e b = c => a = c
+// Eq_Transitive ovvero l'assioma 
+//   forall a, b, c: a = b e b = c => a = c
 func Eq_Transitive[A, B, C any](_ Eq[A, B], _ Eq[B, C]) Eq[A, C] { 
     panic("axiom")
 }
@@ -970,7 +1047,7 @@ func Eq_Transitive[A, B, C any](_ Eq[A, B], _ Eq[B, C]) Eq[A, C] {
 
 ---
 
-## "Funzionalità dell'uguale"
+## Uguaglianza e Sostituzione
 
 Per ogni funzione `F`, ovvero tipo vincolato all'interfaccia `Term2Term` vorremmo dire che
 
@@ -982,13 +1059,13 @@ Eq[ A , B ] ------> Eq[ F[A] , F[B] ]
 
 ---
 
-## "Funzionalità dell'uguale"
+## Uguaglianza e Sostituzione
 
 Data una funzione ed una dimostrazione che due cose sono uguali allora possiamo applicare la funzione ed ottenere altre cose uguali
 
 ```go
-// Function_Eq ~> forall f function, forall a, b term:
-//     a = b  => f(a) = f(b)
+// Function_Eq ovvero l'assioma
+//   forall f function, forall a, b term: a = b  => f(a) = f(b)
 func Function_Eq[F Term2Term, A, B Term](_ Eq[A, B]) Eq[V[F, A], V[F, B]] {
     panic("axiom")
 }
@@ -1003,14 +1080,16 @@ type Plus[L, R Term] Term
 
 // "n + 0 = n"
 
-// Plus_Zero ~> forall n, m: n + succ(m) = succ(n + m)
+// Plus_Zero ovvero l'assioma 
+//   forall n, m: n + succ(m) = succ(n + m)
 func Plus_Zero[N Term]() Eq[Plus[N, Zero], N] { 
     panic("axiom")
 }
 
 // "n + (m + 1) = (n + m) + 1"
 
-// Plus_Sum ~> forall a, m: n + succ(m) = succ(n + m)
+// Plus_Sum ovvero l'assioma 
+//   forall a, m: n + succ(m) = succ(n + m)
 func Plus_Sum[N, M Term]() Eq[
     Plus[N, V[Succ, M]], 
     V[Succ, Plus[N, M]],
@@ -1023,18 +1102,15 @@ func Plus_Sum[N, M Term]() Eq[
 
 ```go
 func Theorem_OnePlusOneEqTwo() Eq[Plus[One, One], Two] {
+    // 1 + 0 = 1
     var en1 Eq[ Plus[One, Zero], One ] = Plus_Zero[One]()
 
-    var en2 Eq[
-        V[Succ, Plus[One, Zero]],
-        Two
-    ] = Function_Eq[Succ](en1)
+    // (1 + 0) + 1 = 2
+    var en2 Eq[ V[Succ, Plus[One, Zero]], Two ] = Function_Eq[Succ](en1)
 
-    var en3 Eq[
-        Plus[One, One],
-        V[Succ, Plus[One, Zero]],
-    ] = Plus_Sum[One, Zero]()
-
+    // 1 + 1 = (1 + 0) + 1 
+    var en3 Eq[ Plus[One, One], V[Succ, Plus[One, Zero]] ] = Plus_Sum[One, Zero]()
+ 
     return Eq_Transitive(en3, en2)
 }
 ```
