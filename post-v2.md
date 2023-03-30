@@ -1,81 +1,19 @@
----
-marp: true
-theme: uncover
-size: 4:3
----
-
-<style>
-:root {
-    font-family: 'Open Sans', sans-serif;
-    font-size: 175%;
-    letter-spacing: 1px;
-
-    background: #ffffff;
-    color: #222;
-}
-
-section.chapter {
-    background: #00acd7;
-    color: #ecfbff;
-}
-
-code {
-    font-size: 100%;
-    line-height: 1.4;
-
-    border-radius: 4px;
-}
-
-code.language-go {
-    font-family: 'Go Mono', monospace;    
-}
-
-section.chapter code {
-    background: #00809f;
-    color: #ecfbff;   
-}
-
-@import "https://unpkg.com/@highlightjs/cdn-assets@11.7.0/styles/github.min.css";
-</style>
-
-<!-- _class: chapter -->
 
 # Introduzione alle Generics in Go
 
----
+Dalla versione 1.18 del Go è stata aggiunta la possibilità di definire funzioni e strutture parametrizzate da tipi con i cosiddetti _type parameters_ o anche dette semplicemente _generics_. Lo scopo principale è che ci permettono di scrivere codice indipendente dai tipi specifici che utilizzano.
 
-## Chi sono?
+Più precisamente le tre novità relative alle _generics_ sono
 
-Antonio De Lucreziis, studente di Matematica e macchinista del PHC
+- Sia funzioni che tipi possono essere parametrizzati rispetto a dei tipi (_type parameters_)
 
-### Cos'è il PHC?
+- In un modo ristretto le interfacce possono essere utilizzare per definire "insiemi di tipi" (_type sets_)
 
-Il PHC è un gruppo di studenti di Matematica con interessi per, open source, Linux, self-hosting e soprattutto smanettare sia con hardware e software (veniteci pure a trovare!)
+- Un minimo di _type inference_ che ci permette di omettere i _type parameters_ quando si riescono a dedurre dal contesto.
 
-&nbsp;
+## Il problema
 
-<div style="display: flex; align-items: center; justify-content: center; gap: 2rem;">
-<img src="../assets/devfest-logo.png" height="100" />
-<img src="../assets/logo-circuit-board.svg" height="100" />
-</div>
-
----
-
-_The Go 1.18 release adds support for generics. Generics are the biggest change we’ve made to Go since the first open source release_
-
-&nbsp;
-
-Fonte: https://go.dev/blog/intro-generics
-
----
-
-## Il Problema
-
----
-
-<style scoped>
-code { font-size: 150% }
-</style>
+Uno degli esempi più lampanti della necessità di aggiungere le _generics_ al Go è che ad esempio manca la funzione `Min` per interi nella libreria standard del linguaggio e bisogna scriversi ogni volta un'implementazione speciale di `Min(x, y)` per il tipo numerico che vogliamo utilizzare (al momento c'è solo `math.Min(float64, float64) float64` che però necessita di conversioni se la vogliamo usare per interi o anche solo `float32`)
 
 ```go
 func Min(x, y int) int {
@@ -86,8 +24,7 @@ func Min(x, y int) int {
     return y
 }
 ```
-
----
+e quindi siamo costretti o a ricopiare tante volte la stessa funzione specializzandola a mano per i vari tipi per cui la vogliamo usare
 
 ```go
 func MinInt8(x, y int8) int8 {
@@ -115,37 +52,13 @@ func MinFloat32(x, y float32) float32 {
 }
 ```
 
----
+o ad esempio scrivere una funzione che prende input `interface{}` (ora c'è un alias ad `any`) ed utilizzare uno switch sul tipo per decidere cosa fare.
 
-<style scoped>
-code { font-size: 150% }
-</style>
+Alternativamente ci sono anche tecniche per risolvere questo problema che utilizzano `go generate`.
 
-```go
-...
-if x < y {
-    return x
-}
+## Type Parameters
 
-return y
-...
-```
-
----
-
-## Soluzioni Pre-Generics
-
-- Fare una funzione che prende `any` ed usare degli switch sul tipo
-
-- Copia incollare tante volte la funzione per ogni tipo
-
-- Utilizzare tool come `go generate`
-
----
-
-## Soluzione Post-Generics
-
-#### Type Parameters
+Dalla versione 1.18 come già detto sono stati introdotti i _type parameters_ che possiamo ad esempio applicare ad una funzione come segue per introdurre una _generics_ alla funzione.
 
 ```go
 import "golang.org/x/exp/constraints"
@@ -158,6 +71,8 @@ func Min[T constraints.Ordered](x, y T) T {
 }
 ```
 
+Questa funzione generica può essere utilizzata come segue
+
 ```go
 var a, b int = 0, 1
 Min[int](a, b)
@@ -166,9 +81,7 @@ var a, b float32 = 3.14, 2.71
 Min[float32](a, b)
 ```
 
----
-
-#### Type Inference
+o anche omettendo la chi
 
 ```go
 var a, b int = 0, 1
@@ -178,104 +91,81 @@ var a, b float32 = 3.14, 2.71
 Min(a, b)
 ```
 
----
-
-<style scoped>
-code { font-size: 150% }
-</style>
+Più precisamente la sintassi per introdurre un _type parameter_ è la seguente, tra quadre indichiamo il nome del tipo che vogliamo introdurre seguito da un'interfaccia che indica il vincolo che il parametro deve rispettare.
 
 ```
 [T Vincolo1, R interface{ Method(), ... }, ...]
 ```
 
----
-
-<style scoped>section { justify-content: space-between; }</style>
+Vediamo meglio come definire questi vincoli. 
 
 ## Type Sets
+
+Fino ad ora quando in Go si parla di interfacce si prende in considerazione il _method set_ per quell'interfaccia e dato un tipo esso implementerà l'interfaccia se ha tutti i metodi del _method set_.
 
 <img src="../assets/method-sets.png" />
 
-&nbsp;
-
----
-
-<style scoped>section { justify-content: space-between; }</style>
-
-## Type Sets
+Un modo duale di vedere la cosa è di pensare al _type set_ generato da un'interfaccia ovvero l'insieme di tutti i tipi che rispettano un'interfaccia come nel diagramma che segue. 
 
 <img src="../assets/type-sets.png" />
 
-&nbsp;
-
-
----
-
-<style scoped>section { justify-content: space-between; }</style>
-
-## Type Sets
+Seguendo questa linea di pensiero è stata estesa la sintassi delle interfacce per ammettere una dichiarazione esplicita del _type set_ sotto forma di un'unione di tipi che l'interfaccia accetta (se omessa allora accetterà tutti i tipi).
 
 <img src="../assets/type-sets-2.png" />
 
-&nbsp;
+Sono state inoltre aggiunte delle semplificazioni nella sintassi per cui quando scriviamo il vincolo di un tipo e vogliamo usare un'interfaccia senza metodi possiamo scrivere direttamente l'unione di tipi.
 
----
+- Se vogliamo scrivere `[T interface{ int | float32 }]` può anche essere scritto come `[T int | float32]`
 
-#### Type Sets (Sintassi)
+- Inoltre è stato aggiunto (finalmente) un alias per il tipo `interface{}` detto `any`
 
-```go
-[T interface{}] ~> [T any]
+### Tipi con la tilde
 
-[T interface{ int | float32 }] ~> [T int | float32]
-```
-
----
-
-#### Type Sets
+Consideriamo ad esempio il seguente frammento di codice.
 
 ```go
-func Somma[T float32|float64](x, y T) T {
-    return x + y
+func SumTwoIntegers[T int](x, y int) T {
+    if x < y { return x }
+    return y
 }
 ```
 
-```go
-type Liter float64
-```
+Però se abbiamo un tipo "sinonimo" di `int` ma non suo alias allora non potremo usarlo nella chiamata generica perché di per sé `Liter` e `int` non sono compatibili.
 
 ```go
+type Liter int
+...
+
 var a, b int = 1, 2
-Somma(a, b) // Ok
+SumTwoIntegers(a, b) // Ok
 
 var a, b Liter = 1, 2
-Somma(a, b) // Errore
+SumTwoIntegers(a, b) // Errore
 ```
 
----
-
-#### Type Sets
+È stata però inserita la seguente sintassi con la `~` prima di un tipo per intendere anche tutti i suoi _type alias_.
 
 ```go
-func Somma[T ~float32|~float64](x, y T) T {
-    return x + y
+func SumTwoIntegers[T ~int](x, y int) T {
+    if x < y { return x }
+    return y
 }
 ```
 
-```go
-type Liter float64
-```
+ed infatti poi il seguente frammento compila
 
 ```go
+type Liter int
+...
+
 var a, b int = 1, 2
-Somma(a, b) // Ok
+SumTwoIntegers(a, b) // Ok
 
 var a, b Liter = 1, 2
-Somma(a, b) // Ok
+SumTwoIntegers(a, b) // Ok
 ```
 
----
-
-#### Type Sets
+Utilizzando la stessa tecnica possiamo considerare un caso più utile definito direttamente la modulo `constraints`.
 
 ```go
 package constraints
@@ -289,9 +179,7 @@ type Float interface {
 ...
 ```
 
----
-
-#### Type Sets
+e sulla stessa riga possiamo finalmente vedere com'è definita l'interfaccia `constraints.Ordered` vista in precedenza. 
 
 ```go
 package constraints
@@ -321,21 +209,15 @@ type Unsigned interface {
 ...
 ```
 
----
+## Tipi Generici
 
-<!-- _class: chapter -->
-
-# Tipi Generici
-
----
-
-<style scoped>
-code { font-size: 120% }
-</style>
+Possiamo ad esempio definire uno _stack_ generico come segue
 
 ```go
 type Stack[T any] []T
 ```
+
+Questo ci permette di vedere come possono essere definiti metodi per tipi generici 
 
 ```go
 func (s *Stack[T]) Push(value T) {
@@ -351,7 +233,7 @@ func (s Stack[T]) Len() int {
 }
 ```
 
----
+Il metodo _pop_ è un po' più interessante, decidiamo che ritornerà il valore tolto dallo stack seguito da `true` se lo stack non era vuoto e "`0.(T)`" e `false` se lo stack era vuoto.
 
 ```go
 func (s *Stack[T]) Pop() (T, bool) {
@@ -369,30 +251,28 @@ func (s *Stack[T]) Pop() (T, bool) {
 }
 ```
 
----
+Per ora per ottenere un valore rappresentante il valore di default per un tipo serve introdurre una nuova variabile e poi ritornarla. 
 
-Per ora ci tocca utilizzare questa funzione di _utility_
+Alternativamente possiamo definire questa funzione di _utility_
 
 ```go
-func Zero[T any]() T {
+func zero[T any]() T {
     var zero T
     return zero
 }
 ```
 
-&nbsp;
+e diciamo che questo è un primo _pattern_ che spesso può essere utile quando lavoriamo con le generics.
 
-<https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#the-zero-value>
+In realtà [anche il resto del mondo](https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#the-zero-value) si è accorto di questo trick e già si sta pensando a delle soluzioni come utilizzare `nil` o `_` per indicare un valore di default per un tipo.
 
----
+## Pattern: Tipi Contenitore
 
-<!-- _class: chapter -->
-
-# Pattern: Tipi Contenitore
-
----
+Vediamo ora qualche caso utile in cui utilizzare le _generics_.
 
 ### Tipi generici nativi
+
+Fin dall'inizio il Go ha avuto alcune strutture generiche _backed in_
 
 - `[n]T` 
     
@@ -410,66 +290,51 @@ func Zero[T any]() T {
     
     Canali per elementi di tipo `T`
 
----
+solo che non essendoci le generics non era possibile definire algoritmi generici che le utilizzassero. 
 
-<style scoped>
-section {
-    font-size: 140%;
-    line-height: 1.75;
-}
-</style>
+Ora finalmente è possibile ed infatti già ci sono moduli sperimentali della libreria standard che introducono una manciata di funzioni utili per lavorare con queste strutture
 
-## `golang.org/x/exp/slices`
+- `golang.org/x/exp/slices`
 
-- `func Index[E comparable](s []E, v E) int`
-- `func Equal[E comparable](s1, s2 []E) bool`
-- `func Sort[E constraints.Ordered](x []E)`
-- `func SortFunc[E any](x []E, less func(a, b E) bool)`
-- e molte altre...
+    - `func Index[E comparable](s []E, v E) int`
+    
+    - `func Equal[E comparable](s1, s2 []E) bool`
+    
+    - `func Sort[E constraints.Ordered](x []E)`
+    
+    - `func SortFunc[E any](x []E, less func(a, b E) bool)`
+    
+    - e molte altre...
 
----
+- `golang.org/x/exp/maps`
 
-<style scoped>
-section {
-    font-size: 140%;
-    line-height: 1.75;
-}
-</style>
+    - `func Keys[M ~map[K]V, K comparable, V any](m M) []K`
+    
+    - `func Values[M ~map[K]V, K comparable, V any](m M) []V`
+    
+    - e molte altre...
 
-## `golang.org/x/exp/maps`
+### Strutture Dati Generiche
 
-- `func Keys[M ~map[K]V, K comparable, V any](m M) []K`
-- `func Values[M ~map[K]V, K comparable, V any](m M) []V`
-- e molte altre...
+Stanno anche nascendo alcuni moduli esterni con varie strutture dati generiche come ad esempio <https://github.com/zyedidia/generic> (~1K stelle su GitHub) che fornisce le seguenti strutture
 
----
-
-<style scoped>
-section {
-    font-size: 140%;
-    line-height: 1.75;
-}
-</style>
-
-## Strutture Dati Generiche
-
-Esempio notevole: <https://github.com/zyedidia/generic> (1K:star: su GitHub)
 - `mapset.Set[T comparable]`, set basato su un dizionario.
+
 - `multimap.MultiMap[K, V]`, dizionario con anche più di un valore per chiave.
+
 - `stack.Stack[T]`, slice ma con un'interfaccia più simpatica rispetto al modo idiomatico del Go.
+
 - `cache.Cache[K comparable, V any]`, dizionario basato su `map[K]V` con una taglia massima e rimuove gli elementi usando la strategia LRU.
+
 - `bimap.Bimap[K, V comparable]`, dizionario bi-direzionale.
+
 - `hashmap.Map[K, V any]`, implementazione alternativa di `map[K]V` con supporto per _copy-on-write_.
+
 - e molte altre...
 
----
+## Anti-Pattern (1)
 
-<!-- _class: chapter -->
-
-# Anti-Pattern 1
-Utility HTTP
-
----
+Vediamo ora un esempio (a posteriori discutibile) di come creare una utility http.
 
 ```go
 // library code
@@ -1064,3 +929,6 @@ li {
 - <https://go.dev/blog/when-generics>
 
 - <https://github.com/golang/proposal/blob/master/design/generics-implementation-dictionaries-go1.18.md>
+
+--- 
+
