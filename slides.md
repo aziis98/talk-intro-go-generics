@@ -798,78 +798,109 @@ user1, _ := database.Read(db, tables.Users, userRef1)
 
 <!-- _class: chapter -->
 
-# Altro esempio caotico
-Vediamo come implementare le _promise_ in Go con le generics
+# Pattern: _Channels_ 
+Alcune utility per lavorare meglio con i _channel_ 
 
 ---
 
 ```go
-type Promise[T any] struct {
-    value T
-    err   error
-    done  <-chan struct{}
-}
-
-func (p Promise[T]) Await() (T, error) {
-    <-p.done
-    return p.value, p.err
+func trySend[T any](c chan<- T, v T) bool {
+    select {
+    case c <- v:
+        return true
+    default:
+        return false
+    }
 }
 ```
 
 ---
 
 ```go
-type PromiseFunc[T any] func(resolve func(T), reject func(error))
+func raceSame[T any](cs ...<-chan T) T {
+    done := make(chan T)
+    defer close(done)
 
-func Run[T any](f PromiseFunc[T]) *Promise[T] {
+    for _, c := range cs {
+        go func(c <-chan T) {
+            trySend(done, <-c)
+        }(c)
+    }
+
+    return <-done
+}
+```
+
+---
+
+```go
+type Awaiter interface {
+    Await()
+}
+
+type awaiterChan[T any] <-chan T
+
+func (rc awaiterChan[T]) Await() { <-rc }
+```
+
+---
+
+```go
+type targetChan[T any] struct {
+    c      <-chan T
+    target *T
+}
+
+func (rc targetChan[T]) Await() { *rc.target = <-rc.c }
+```
+
+---
+
+```go
+func race(rs ...Awaiter) {
     done := make(chan struct{})
-    p := Promise{ done: done }
+    defer close(done)
 
-    go f(
-        func(value T) { p.value = value; done <- struct{} },
-        func(err error) { p.err = err; done <- struct{} }
-    )
+    for _, r := range rs {
+        go func(r Awaiter) {
+            r.Await()
+            trySend(done, struct{}{})
+        }(r)
+    }
 
-    return &p
+    <-done
 }
 ```
 
 ---
 
 ```go
-func AwaitAll[T any](ps ...*Promise[T]) error {
-    ...
-}
-```
+var result2 int
+var result3 float64
 
-```go
-type Waiter interface { Wait() error }
-
-func (p Promise[T]) Wait() error {
-    <-p.done
-    return p.err
-}
-
-func AwaitAll(ws ...Waiter) error {
-    ...
-}
-```
-
----
-
-```go
-func ResolveInto[T any](p *Promise[T], target *T) *Promise[T] {
-    ...
-}
-```
-
-```go
-AwaitAll(
-    ResolveInto(httpRequest1, &result1), // :: *Promise[int]
-    ResolveInto(httpRequest2, &result2), // :: *Promise[struct{ ... }] 
-    ResolveInto(httpRequest3, &result3), // :: *Promise[any]
-    timer1,                              // :: *Promise[struct{}]
+raceAny(
+    awaiterChan[string](c1),
+    targetChan[int]{c2, &result2},
+    targetChan[float64]{c3, &result3},
 )
+
+fmt.Println(result2, result3)
+```
+
+---
+
+```go
+var result2 int
+var result3 float64
+
+// Variante più pulita di questa utility
+channels.Race(
+    channels.Awaiter(c1),
+    channels.Awaiter(c2, channels.WithTarget(&result2)),
+    channels.Awaiter(c3, channels.WithTarget(&result3)),
+)
+
+fmt.Println(result2, result3)
 ```
 
 ---
@@ -883,15 +914,24 @@ _Proof checking_ in Go
 
 ## Premesse
 
+Definiamo i possibili "tipi" delle nostre espressioni
+
 ```go
 type Bool interface{ isBool() }
 
-type Term interface{ isTerm() }
+type Nat interface{ isNat() }
 
-type Term2Term interface{ isTerm2Term() }
+type Nat2Nat interface{ isNat2Nat() }
+```
 
-// Trick per codificare higher-kinded types
-type V[H Term2Term, T Term] Term
+---
+
+## Premesse
+
+Trick per codificare higher-kinded types in Go
+
+```go
+type V[ H Nat2Nat, T Nat ] Nat
 ```
 
 ---
@@ -899,8 +939,8 @@ type V[H Term2Term, T Term] Term
 ## Assiomi dei Naturali 
 
 ```go
-type Zero Term
-type Succ Term2Term
+type Zero Nat
+type Succ Nat2Nat
 
 // Alcuni alias utili
 type One = V[Succ, Zero]
@@ -918,19 +958,19 @@ type Eq[A, B any] Bool
 // Eq_Refl ovvero l'assioma 
 //   forall x : x = x
 func Eq_Reflexive[T any]() Eq[T, T] { 
-    panic("axiom")
+    panic("axiom: comptime only")
 }
 
 // Eq_Symmetric ovvero l'assioma 
 //   forall a, b: a = b => b = a
 func Eq_Symmetric[A, B any](_ Eq[A, B]) Eq[B, A] { 
-    panic("axiom")
+    panic("axiom: comptime only")
 }
 
 // Eq_Transitive ovvero l'assioma 
 //   forall a, b, c: a = b e b = c => a = c
 func Eq_Transitive[A, B, C any](_ Eq[A, B], _ Eq[B, C]) Eq[A, C] { 
-    panic("axiom")
+    panic("axiom: comptime only")
 }
 ```
 
@@ -938,7 +978,7 @@ func Eq_Transitive[A, B, C any](_ Eq[A, B], _ Eq[B, C]) Eq[A, C] {
 
 ## Uguaglianza e Sostituzione
 
-Per ogni funzione `F`, ovvero tipo vincolato all'interfaccia `Term2Term` vorremmo dire che
+Per ogni funzione `F`, ovvero tipo vincolato all'interfaccia `Nat2Nat` vorremmo dire che
 
 ```
                F
@@ -954,9 +994,9 @@ Data una funzione ed una dimostrazione che due cose sono uguali allora possiamo 
 
 ```go
 // Function_Eq ovvero l'assioma
-//   forall f function, forall a, b term: a = b  => f(a) = f(b)
-func Function_Eq[F Term2Term, A, B Term](_ Eq[A, B]) Eq[V[F, A], V[F, B]] {
-    panic("axiom")
+//   forall f function, forall a, b nat: a = b  => f(a) = f(b)
+func Function_Eq[F Nat2Nat, A, B Nat](_ Eq[A, B]) Eq[V[F, A], V[F, B]] {
+    panic("axiom: comptime only")
 }
 ```
 
@@ -965,24 +1005,24 @@ func Function_Eq[F Term2Term, A, B Term](_ Eq[A, B]) Eq[V[F, A], V[F, B]] {
 ## Assiomi dell'addizione
 
 ```go
-type Plus[L, R Term] Term
+type Plus[L, R Nat] Nat
 
 // "n + 0 = n"
 
 // Plus_Zero ovvero l'assioma 
 //   forall n, m: n + succ(m) = succ(n + m)
-func Plus_Zero[N Term]() Eq[Plus[N, Zero], N] { 
-    panic("axiom")
+func Plus_Zero[N Nat]() Eq[Plus[N, Zero], N] { 
+    panic("axiom: comptime only")
 }
 
 // "n + (m + 1) = (n + m) + 1"
 
 // Plus_Sum ovvero l'assioma 
-//   forall a, m: n + succ(m) = succ(n + m)
-func Plus_Sum[N, M Term]() Eq[
+//   forall n, m: n + succ(m) = succ(n + m)
+func Plus_Sum[N, M Nat]() Eq[
     Plus[N, V[Succ, M]], 
     V[Succ, Plus[N, M]],
-] { panic("axiom") }
+] { panic("axiom: comptime only") }
 ```
 
 ---
