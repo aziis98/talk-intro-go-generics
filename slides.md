@@ -840,7 +840,7 @@ type Awaiter interface {
 
 type awaiterChan[T any] <-chan T
 
-func (rc awaiterChan[T]) Await() { <-rc }
+func (ac awaiterChan[T]) Await() { <-ac }
 ```
 
 ---
@@ -851,7 +851,7 @@ type targetChan[T any] struct {
     target *T
 }
 
-func (rc targetChan[T]) Await() { *rc.target = <-rc.c }
+func (tc targetChan[T]) Await() { *tc.target = <-tc.c }
 ```
 
 ---
