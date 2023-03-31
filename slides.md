@@ -194,7 +194,7 @@ code { font-size: 150% }
 
 ## Type Sets
 
-<img src="../assets/method-sets.png" />
+<img src="./assets/method-sets.png" />
 
 &nbsp;
 
@@ -204,7 +204,7 @@ code { font-size: 150% }
 
 ## Type Sets
 
-<img src="../assets/type-sets.png" />
+<img src="./assets/type-sets.png" />
 
 &nbsp;
 
@@ -215,7 +215,7 @@ code { font-size: 150% }
 
 ## Type Sets
 
-<img src="../assets/type-sets-2.png" />
+<img src="./assets/type-sets-2.png" />
 
 &nbsp;
 
