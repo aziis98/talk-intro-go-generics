@@ -13,6 +13,8 @@ jobs:
           node-version: "*"
       - name: Install dependencies
         run: npm install
+      - name: Setup directories
+        run: mkdir -p out/ bin/
       - name: Build slides to HTML
         run: npm run build:html
       - name: Build slides to PDF
