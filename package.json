@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "preview": "marp --html -p -o out/slides.html slides.md",
-    "build:html": "marp --html -o out/slides.html slides.md",
+    "preview": "marp --html -p -o slides.html slides.md",
+    "build:html": "marp --html -o slides.html slides.md && cp slides.html out/",
     "build:pdf": "marp --pdf --html --allow-local-files -o out/slides.pdf slides.md"
   },
   "author": "aziis98 <antonio.delucreziis@gmail.com>",

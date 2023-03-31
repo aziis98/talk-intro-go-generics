@@ -55,8 +55,8 @@ Il PHC è un gruppo di studenti di Matematica con interessi per, open source, Li
 &nbsp;
 
 <div style="display: flex; align-items: center; justify-content: center; gap: 2rem;">
-<img src="../assets/devfest-logo.png" height="100" />
-<img src="../assets/logo-circuit-board.svg" height="100" />
+<img src="./assets/devfest-logo.png" height="100" />
+<img src="./assets/logo-circuit-board.svg" height="100" />
 </div>
 
 ---
