@@ -21,7 +21,7 @@ section.chapter {
 
 code {
     font-size: 100%;
-    line-height: 1.4;
+    line-height: 1.3;
 
     border-radius: 4px;
 }
@@ -61,11 +61,13 @@ Il PHC è un gruppo di studenti di Matematica con interessi per, open source, Li
 
 ---
 
-_The Go 1.18 release adds support for generics. Generics are the biggest change we’ve made to Go since the first open source release_
+<style scoped>section { justify-content: space-between; }</style>
 
 &nbsp;
 
-Fonte: https://go.dev/blog/intro-generics
+_The Go 1.18 release adds support for generics. Generics are the biggest change we’ve made to Go since the first open source release_
+
+:link: <https://go.dev/blog/intro-generics>
 
 ---
 
@@ -196,7 +198,7 @@ code { font-size: 150% }
 
 <img src="./assets/method-sets.png" />
 
-&nbsp;
+:anchor: <https://go.dev/blog/intro-generics>
 
 ---
 
@@ -206,7 +208,7 @@ code { font-size: 150% }
 
 <img src="./assets/type-sets.png" />
 
-&nbsp;
+:fish: <https://go.dev/blog/intro-generics>
 
 
 ---
@@ -217,17 +219,21 @@ code { font-size: 150% }
 
 <img src="./assets/type-sets-2.png" />
 
-&nbsp;
+:fish: <https://go.dev/blog/intro-generics>
 
 ---
 
+<style scoped>
+code {
+    line-height: 1.6;
+}
+</style>
+
 #### Type Sets (Sintassi)
 
-```go
-[T interface{}] ~> [T any]
+- `[T interface{}]` si può anche scrivere `[T any]`
 
-[T interface{ int | float32 }] ~> [T int | float32]
-```
+- `[T interface{ int | float32 }]` si può anche scrivere `[T int | float32]`
 
 ---
 
@@ -380,9 +386,7 @@ func Zero[T any]() T {
 }
 ```
 
-&nbsp;
-
-<https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#the-zero-value>
+:link: [43651-type-parameters.md#the-zero-value](https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md#the-zero-value)
 
 ---
 
@@ -466,7 +470,7 @@ Esempio notevole: <https://github.com/zyedidia/generic> (1K:star: su GitHub)
 
 <!-- _class: chapter -->
 
-# Anti-Pattern 1
+# Anti-Pattern (1)
 Utility HTTP
 
 ---
@@ -547,17 +551,11 @@ if err := DecodeAndValidateJSON(r, &foo); err != nil {
 }
 ```
 
-In realtà anche in questo caso non serviva introdurre necessariamente delle generics
-
----
-
-Quindi nella maggior parte dei casi se ci ritroviamo a scrivere una funzione generica con un **parametro vincolato ad un'interfaccia** forse dobbiamo porci qualche domanda
-
 ---
 
 <!-- _class: chapter -->
 
-# Anti-Pattern 2
+# Anti-Pattern (2)
 Generics vs Interfacce
 
 ---
@@ -631,7 +629,7 @@ d := &bytes.Buffer{} /* (*bytes.Buffer) */
 WriteOneByte(d /* (io.Writer) */, 42)
 ```
 
-↓
+<div style="font-size: 45px;">↓</div>
 
 ```go
 d := &bytes.Buffer{} /* (*bytes.Buffer) */
@@ -639,7 +637,7 @@ d := &bytes.Buffer{} /* (*bytes.Buffer) */
 (io.Writer).Write(d /* (io.Writer) */, []byte{ 42 })
 ```
 
-↓
+<div style="font-size: 45px;">↓</div>
 
 ```go
 d := &bytes.Buffer{} /* (*bytes.Buffer) */
@@ -663,9 +661,13 @@ d := &bytes.Buffer{} /* (*bytes.Buffer) */
 
 ---
 
+Quindi nella maggior parte dei casi se ci ritroviamo a scrivere una funzione generica con un **parametro vincolato ad un'interfaccia** forse dobbiamo porci qualche domanda
+
+---
+
 <!-- _class: chapter -->
 
-# Pattern: "PhantomData"
+# Pattern: Type-safe Database
 Vediamo un analogo di `PhantomData<T>` dal Rust per rendere _type-safe_ l'interfaccia di una libreria
 
 ---
@@ -784,15 +786,7 @@ var Users = Table[User]{
 
 ---
 
-```go
-user1 := &model.User{ "j.smith@example.org", "John Smith", 36 }
-
-userRef1, _ := database.Insert(db, tables.Users, user1)
-
-...
-
-user1, _ := database.Read(db, tables.Users, userRef1) 
-```
+Quindi possiamo anche utilizzare le **generics** per rendere **type-safe** l'interfaccia di qualcosa che inizialmente non lo era.
 
 ---
 
@@ -1032,18 +1026,21 @@ func Plus_Sum[N, M Nat]() Eq[
 ```go
 func Theorem_OnePlusOneEqTwo() Eq[Plus[One, One], Two] {
     // 1 + 0 = 1
-    var en1 Eq[ Plus[One, Zero], One ] = Plus_Zero[One]()
+    // en1 :: Eq[ Plus[One, Zero], One ]
+    en1 := Plus_Zero[One]()
 
     // (1 + 0) + 1 = 2
-    var en2 Eq[ V[Succ, Plus[One, Zero]], Two ] = Function_Eq[Succ](en1)
+    // en2 :: Eq[ V[Succ, Plus[One, Zero]], Two ]
+    en2 := Function_Eq[Succ](en1)
 
     // 1 + 1 = (1 + 0) + 1 
-    var en3 Eq[ Plus[One, One], V[Succ, Plus[One, Zero]] ] = Plus_Sum[One, Zero]()
+    // en3 :: Eq[ Plus[One, One], V[Succ, Plus[One, Zero]] ]
+    en3 := Plus_Sum[One, Zero]()
  
     return Eq_Transitive(en3, en2)
 }
 ```
-
+<!-- 
 ---
 
 ## 1 + 1 = 2
@@ -1057,7 +1054,7 @@ func Theorem_OnePlusOneEqTwo() Eq[Plus[One, One], Two] {
         ),
     )
 }
-```
+``` -->
 
 ---
 
