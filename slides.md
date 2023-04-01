@@ -541,9 +541,9 @@ func DecodeAndValidateJSON(r *http.Request, target Validator) error {
 
     return nil
 }
+```
 
-...
-
+```go
 var foo FooRequest
 if err := DecodeAndValidateJSON(r, &foo); err != nil {
     http.Error(w, err.Error(), http.StatusInternalServerError)
